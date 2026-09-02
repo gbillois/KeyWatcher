@@ -1,0 +1,10 @@
+{
+  "name": "keywatcher",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tableau de bord local et sans dépendance pour Microsoft Foundry.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0b2f4a">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://login.microsoftonline.com https://management.azure.com; frame-ancestors 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="description" content="Tableau de bord local de consommation et de budgets Microsoft Foundry.">
+  <title>KeyWatcher — Azure AI en un regard</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="nav-topbar">
+      <div class="brand-mark" aria-hidden="true"><span>KW</span></div>
+      <div class="brand-copy">
+        <span class="brand-eyebrow">Azure AI observatory</span>
+        <strong>KeyWatcher</strong>
+      </div>
+      <div class="nav-spacer"></div>
+      <span id="connectionBadge" class="connection-badge is-offline"><span class="status-dot"></span>Non connecté</span>
+      <button id="refreshButton" class="nav-action" type="button" disabled>Actualiser</button>
+      <button id="settingsButton" class="icon-button" type="button" aria-label="Ouvrir les réglages" aria-expanded="false">⚙</button>
+    </header>
+
+    <main class="content">
+      <section class="welcome-card">
+        <div>
+          <span class="kicker">Pilotage simplifié</span>
+          <h1>Vos ressources IA, leurs coûts et leurs modèles.</h1>
+          <p>Une vue locale et lisible de Microsoft Foundry. Aucune valeur de clé API n’est récupérée ou enregistrée.</p>
+        </div>
+        <div class="welcome-actions">
+          <button id="primaryConnectButton" class="button button-primary" type="button">Configurer Azure</button>
+          <span id="lastSyncLabel" class="small-note">Aucune synchronisation</span>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="Résumé">
+        <article class="summary-card">
+          <span class="summary-label">Ressources actives</span>
+          <strong id="resourceCount" class="summary-value">—</strong>
+          <span class="summary-detail">Foundry et Azure OpenAI</span>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Coût du mois</span>
+          <strong id="monthCost" class="summary-value">—</strong>
+          <span class="summary-detail">Données Azure Cost Management</span>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Budget cumulé</span>
+          <strong id="totalBudget" class="summary-value">—</strong>
+          <span class="summary-detail">Budgets Azure ou locaux</span>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Point d’attention</span>
+          <strong id="attentionCount" class="summary-value">—</strong>
+          <span class="summary-detail">À partir de 75 % consommés</span>
+        </article>
+      </section>
+
+      <section class="panel resources-panel">
+        <div class="section-header">
+          <div>
+            <span class="section-eyebrow">Portefeuille</span>
+            <h2>Clés et projets</h2>
+            <p>Le nom du projet et le budget local restent uniquement dans ce navigateur.</p>
+          </div>
+          <label class="search-field">
+            <span class="visually-hidden">Rechercher</span>
+            <input id="searchInput" type="search" placeholder="Rechercher un projet…" autocomplete="off">
+          </label>
+        </div>
+
+        <div id="tableNotice" class="notice">
+          <strong>Commencez par connecter Azure.</strong>
+          <span>KeyWatcher découvrira automatiquement vos ressources Azure AI actives.</span>
+        </div>
+
+        <div class="table-wrap">
+          <table id="resourceTable" hidden>
+            <thead>
+              <tr>
+                <th><button class="sort-button" data-sort="projectName" type="button">Projet <span>↕</span></button></th>
+                <th><button class="sort-button" data-sort="azureName" type="button">Ressource Azure <span>↕</span></button></th>
+                <th><button class="sort-button" data-sort="budget" type="button">Budget total <span>↕</span></button></th>
+                <th><button class="sort-button" data-sort="cost" type="button">Consommé <span>↕</span></button></th>
+                <th><button class="sort-button" data-sort="percent" type="button">Utilisation <span>↕</span></button></th>
+                <th><button class="sort-button" data-sort="status" type="button">État <span>↕</span></button></th>
+              </tr>
+            </thead>
+            <tbody id="resourceTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="section-header chart-heading">
+          <div>
+            <span class="section-eyebrow">Télémétrie</span>
+            <h2 id="chartTitle">Consommation par modèle</h2>
+            <p id="chartSubtitle">Sélectionnez une ressource pour afficher ses jetons.</p>
+          </div>
+          <div class="segmented-control" aria-label="Échelle du graphique">
+            <button class="scale-button is-active" data-scale="day" type="button">Jour</button>
+            <button class="scale-button" data-scale="month" type="button">Mois</button>
+          </div>
+        </div>
+        <div id="chartEmpty" class="chart-empty">
+          <span class="chart-empty-mark">▥</span>
+          <strong>Aucune ressource sélectionnée</strong>
+          <span>Cliquez sur une ligne du tableau pour charger la consommation.</span>
+        </div>
+        <div id="chartContent" hidden>
+          <div id="chartLegend" class="chart-legend"></div>
+          <div class="chart-stage">
+            <div id="chartBars" class="chart-bars" role="img" aria-label="Histogramme des jetons consommés"></div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span>KeyWatcher fonctionne entièrement dans votre navigateur.</span>
+        <span>Coûts Azure généralement différés de plusieurs heures.</span>
+      </footer>
+    </main>
+
+    <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+    <aside id="settingsDrawer" class="settings-drawer" aria-hidden="true" aria-label="Réglages">
+      <div class="drawer-header">
+        <div>
+          <span class="section-eyebrow">Configuration locale</span>
+          <h2>Réglages</h2>
+        </div>
+        <button id="closeSettingsButton" class="close-button" type="button" aria-label="Fermer">×</button>
+      </div>
+      <div class="drawer-body">
+        <section class="settings-section">
+          <h3>Connexion Microsoft</h3>
+          <p>Utilisez une application Entra de type SPA. Aucun secret client n’est nécessaire.</p>
+          <label class="field">
+            <span>Identifiant de locataire</span>
+            <input id="tenantIdInput" type="text" placeholder="organizations ou votre Tenant ID" spellcheck="false">
+          </label>
+          <label class="field">
+            <span>Identifiant de l’application</span>
+            <input id="clientIdInput" type="text" placeholder="Client ID de l’application Entra" spellcheck="false">
+          </label>
+          <label class="field">
+            <span>URI de redirection à déclarer</span>
+            <div class="copy-field">
+              <input id="redirectUriInput" type="text" readonly>
+              <button id="copyRedirectButton" type="button">Copier</button>
+            </div>
+          </label>
+          <div class="settings-actions">
+            <button id="saveSettingsButton" class="button button-secondary" type="button">Enregistrer</button>
+            <button id="loginButton" class="button button-primary" type="button">Se connecter</button>
+            <button id="logoutButton" class="button button-ghost" type="button" hidden>Déconnecter</button>
+          </div>
+          <p id="authHelp" class="inline-help">Le navigateur réutilisera normalement votre session Microsoft existante.</p>
+        </section>
+
+        <section class="settings-section">
+          <h3>Abonnements suivis</h3>
+          <p>Sans sélection, tous les abonnements accessibles sont inclus.</p>
+          <div id="subscriptionList" class="subscription-list">
+            <span class="muted">Connectez Azure pour afficher les abonnements.</span>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Données locales</h3>
+          <p>Les informations projets sont séparées des relevés de consommation.</p>
+          <div class="settings-actions stacked">
+            <button id="exportConfigButton" class="button button-secondary" type="button">Exporter les projets en JSON</button>
+            <button id="importConfigButton" class="button button-secondary" type="button">Importer les projets</button>
+            <button id="exportConsumptionButton" class="button button-secondary" type="button">Exporter les consommations en CSV</button>
+            <button id="exportConsumptionJsonButton" class="button button-ghost" type="button">Exporter les consommations en JSON</button>
+          </div>
+          <input id="importConfigInput" type="file" accept="application/json,.json" hidden>
+        </section>
+
+        <section class="settings-section compact">
+          <h3>Accès requis</h3>
+          <ul>
+            <li>Lecture des ressources et métriques Azure</li>
+            <li>Cost Management Reader pour les montants</li>
+            <li>Azure Service Management / user_impersonation</li>
+          </ul>
+        </section>
+      </div>
+    </aside>
+
+    <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
